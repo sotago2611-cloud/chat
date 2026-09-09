@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>グループチャット</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #8bb7d9;
+}
+
+/* ヘッダー */
+header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 55px;
+
+  background: #ffffff;
+  border-bottom: 1px solid #ddd;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-weight: bold;
+  z-index: 10;
+}
+
+/* チャット */
+#chat {
+  padding: 70px 12px 75px;
+}
+
+/* メッセージ */
+.message {
+  display: flex;
+  flex-direction: column;
+  margin: 8px 0;
+}
+
+.message.other {
+  align-items: flex-start;
+}
+
+.message.me {
+  align-items: flex-end;
+}
+
+/* 名前 */
+.name {
+  font-size: 12px;
+  color: #444;
+  margin: 0 8px 3px;
+}
+
+/* 吹き出し */
+.bubble {
+  max-width: 75%;
+  padding: 9px 13px;
+
+  background: white;
+  border-radius: 15px;
+
+  word-break: break-word;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.me .bubble {
+  background: #9df078;
+}
+
+/* 時刻 */
+.time {
+  font-size: 10px;
+  color: #555;
+  margin: 3px 7px 0;
+}
+
+/* 入力欄 */
+#sendArea {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  display: flex;
+  gap: 6px;
+
+  padding: 8px;
+  background: white;
+
+  border-top: 1px solid #ddd;
+}
+
+#message {
+  flex: 1;
+
+  min-width: 0;
+
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+
+  font-size: 16px;
+  outline: none;
+}
+
+#sendButton {
+  border: none;
+  border-radius: 20px;
+
+  padding: 0 16px;
+
+  background: #07c755;
+  color: white;
+
+  font-weight: bold;
+}
+
+#sendButton:active {
+  opacity: 0.7;
+}
+
+/* 名前入力画面 */
+#nameScreen {
+  position: fixed;
+  inset: 0;
+
+  background: white;
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 30px;
+
+  z-index: 100;
+}
+
+#nameScreen h2 {
+  margin-bottom: 20px;
+}
+
+#nameInput {
+  width: 100%;
+  max-width: 300px;
+
+  padding: 12px;
+
+  border: 1px solid #ccc;
+  border-radius: 8px;
+
+  font-size: 16px;
+}
+
+#startButton {
+  margin-top: 12px;
+
+  width: 100%;
+  max-width: 300px;
+
+  padding: 12px;
+
+  border: none;
+  border-radius: 8px;
+
+  background: #07c755;
+  color: white;
+
+  font-size: 16px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- 名前入力 -->
+<div id="nameScreen">
+
+  <h2>グループチャット</h2>
+
+  <input
+    id="nameInput"
+    type="text"
+    placeholder="名前を入力"
+    maxlength="20"
+  >
+
+  <button id="startButton">
+    はじめる
+  </button>
+
+</div>
+
+
+<!-- ヘッダー -->
+<header>
+  グループチャット
+</header>
+
+
+<!-- メッセージ -->
+<div id="chat"></div>
+
+
+<!-- 送信 -->
+<div id="sendArea">
+
+  <input
+    id="message"
+    type="text"
+    placeholder="メッセージ"
+  >
+
+  <button id="sendButton">
+    送信
+  </button>
+
+</div>
+
+
+<script>
+
+// ============================
+// GASのウェブアプリURL
+// ============================
+
+const GAS_URL =
+  "ここにGASのウェブアプリURL";
+
+
+// ============================
+// 自分の名前
+// ============================
+
+let myName =
+  localStorage.getItem("chatName");
+
+
+// ============================
+// 名前入力
+// ============================
+
+const nameScreen =
+  document.getElementById("nameScreen");
+
+const nameInput =
+  document.getElementById("nameInput");
+
+const startButton =
+  document.getElementById("startButton");
+
+
+if (myName) {
+  nameScreen.style.display = "none";
+}
+
+
+startButton.onclick = function() {
+
+  const name =
+    nameInput.value.trim();
+
+  if (!name) {
+    alert("名前を入力してください");
+    return;
+  }
+
+  myName = name;
+
+  localStorage.setItem(
+    "chatName",
+    myName
+  );
+
+  nameScreen.style.display = "none";
+
+  loadMessages();
+};
+
+
+// ============================
+// メッセージ取得
+// ============================
+
+async function loadMessages() {
+
+  try {
+
+    const response =
+      await fetch(GAS_URL);
+
+    const messages =
+      await response.json();
+
+    const chat =
+      document.getElementById("chat");
+
+    chat.innerHTML = "";
+
+    messages.forEach(msg => {
+
+      const message =
+        document.createElement("div");
+
+      message.className =
+        "message " +
+        (msg.name === myName
+          ? "me"
+          : "other");
+
+
+      // 名前
+      const name =
+        document.createElement("div");
+
+      name.className = "name";
+
+      name.textContent =
+        msg.name;
+
+
+      // 吹き出し
+      const bubble =
+        document.createElement("div");
+
+      bubble.className =
+        "bubble";
+
+      bubble.textContent =
+        msg.message;
+
+
+      // 時刻
+      const time =
+        document.createElement("div");
+
+      time.className = "time";
+
+      if (msg.time) {
+
+        const date =
+          new Date(msg.time);
+
+        time.textContent =
+          date.toLocaleTimeString(
+            "ja-JP",
+            {
+              hour: "2-digit",
+              minute: "2-digit"
+            }
+          );
+      }
+
+
+      message.appendChild(name);
+      message.appendChild(bubble);
+      message.appendChild(time);
+
+      chat.appendChild(message);
+
+    });
+
+
+    // 一番下へ
+    window.scrollTo(
+      0,
+      document.body.scrollHeight
+    );
+
+  } catch (error) {
+
+    console.error(
+      "メッセージ取得エラー:",
+      error
+    );
+
+  }
+
+}
+
+
+// ============================
+// メッセージ送信
+// ============================
+
+const messageInput =
+  document.getElementById("message");
+
+const sendButton =
+  document.getElementById("sendButton");
+
+
+async function sendMessage() {
+
+  const message =
+    messageInput.value.trim();
+
+  if (!message) return;
+
+  sendButton.disabled = true;
+
+
+  try {
+
+    const body =
+      new URLSearchParams();
+
+    body.append(
+      "name",
+      myName
+    );
+
+    body.append(
+      "message",
+      message
+    );
+
+
+    await fetch(GAS_URL, {
+
+      method: "POST",
+
+      body: body
+
+    });
+
+
+    messageInput.value = "";
+
+    await loadMessages();
+
+
+  } catch (error) {
+
+    console.error(
+      "送信エラー:",
+      error
+    );
+
+    alert(
+      "メッセージを送信できませんでした"
+    );
+
+  }
+
+
+  sendButton.disabled = false;
+
+}
+
+
+// ============================
+// ボタン
+// ============================
+
+sendButton.onclick =
+  sendMessage;
+
+
+// Enterキーで送信
+messageInput.addEventListener(
+  "keydown",
+  function(e) {
+
+    if (e.key === "Enter") {
+      sendMessage();
+    }
+
+  }
+);
+
+
+// ============================
+// 2秒ごとに更新
+// ============================
+
+if (myName) {
+  loadMessages();
+
+  setInterval(
+    loadMessages,
+    2000
+  );
+}
+
+</script>
+
+</body>
+</html>
